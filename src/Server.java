@@ -20,7 +20,6 @@ public class Server
     {
         // server is listening on port 1234
         ServerSocket ss = new ServerSocket(1234);
-
         Socket s;
 
         // running infinite loop for getting
@@ -39,7 +38,10 @@ public class Server
             System.out.println("Creating a new handler for this client...");
 
             // Create a new handler object for handling this request.
-            ClientHandler mtch = new ClientHandler(s,"client " + i, dis, dos);
+            String nickname;
+            nickname = dis.readUTF();
+            System.out.println(nickname + " has joined the Chat Room !");
+            ClientHandler mtch = new ClientHandler(s, nickname, dis, dos);
 
             // Create a new Thread with this object.
             Thread t = new Thread(mtch);
@@ -52,10 +54,6 @@ public class Server
             // start the thread.
             t.start();
 
-            // increment i for new client.
-            // i is used for naming only, and can be replaced
-            // by any naming scheme
-            i++;
 
         }
     }

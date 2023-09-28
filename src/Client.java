@@ -64,6 +64,20 @@ public class Client
 
         sendMessage.start();
         readMessage.start();
+        // Read the client nickname from the console
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+        System.out.print("Enter your nickname: ");
+        String nickname = reader.readLine();
 
+        // Send the nickname to the server
+        dos.writeUTF(nickname);
+        System.out.println("Type your message : ");
+        // Start sending messages to the server
+        while (true) {
+
+            String message = reader.readLine();
+            dos.writeUTF(message);
+            dos.flush(); // Flush the output stream to ensure the message is sent immediately
+        }
     }
 }
