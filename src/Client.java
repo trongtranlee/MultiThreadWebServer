@@ -1,69 +1,50 @@
-// Java implementation for multithreaded chat client
-// Save file as Client.java
-
 import java.io.*;
 import java.net.*;
-import java.util.Scanner;
 
-public class Client
-{
+// Client class
+public class Client {
     final static int ServerPort = 1234;
 
-    public static void main(String args[]) throws UnknownHostException, IOException
-    {
-        Scanner scn = new Scanner(System.in);
+    public static void main(String[] args) throws UnknownHostException, IOException {
+        // Establish a connection with the server
+        Socket s = new Socket("localhost", ServerPort);
 
-        // getting localhost ip
-        InetAddress ip = InetAddress.getByName("localhost");
-
-        // establish the connection
-        Socket s = new Socket(ip, ServerPort);
-
-        // obtaining input and out streams
+        // Obtain input and output streams
         DataInputStream dis = new DataInputStream(s.getInputStream());
         DataOutputStream dos = new DataOutputStream(s.getOutputStream());
 
-        // sendMessage thread
-        Thread sendMessage = new Thread(new Runnable()
-        {
+        // Create a separate thread to receive messages from the server
+        Thread receiveThread = new Thread(new Runnable() {
             @Override
             public void run() {
                 while (true) {
-
-                    // read the message to deliver.
-                    String msg = scn.nextLine();
-
                     try {
-                        // write on the output stream
-                        dos.writeUTF(msg);
+                        // Read the message from the server
+                        String message = dis.readUTF();
+                        System.out.println(message);
                     } catch (IOException e) {
                         e.printStackTrace();
+                        break;
                     }
                 }
             }
         });
+        receiveThread.start();
 
-        // readMessage thread
-        Thread readMessage = new Thread(new Runnable()
-        {
-            @Override
-            public void run() {
+        // Read the client nickname from the console
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+        System.out.print("Enter your nickname: ");
+        String nickname = reader.readLine();
 
-                while (true) {
-                    try {
-                        // read the message sent to this client
-                        String msg = dis.readUTF();
-                        System.out.println(msg);
-                    } catch (IOException e) {
+        // Send the nickname to the server
+        dos.writeUTF(nickname);
+        System.out.println("Type your message : ");
+        // Start sending messages to the server
+        while (true) {
 
-                        e.printStackTrace();
-                    }
-                }
-            }
-        });
-
-        sendMessage.start();
-        readMessage.start();
-
+            String message = reader.readLine();
+            dos.writeUTF(message);
+            dos.flush(); // Flush the output stream to ensure the message is sent immediately
+        }
     }
 }

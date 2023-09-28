@@ -1,8 +1,10 @@
+import org.junit.Test;
+
 import static org.junit.Assert.*;
 
 public class ServerTest {
 
-    @org.junit.Test
+    @Test
     public void main() {
     }
 }

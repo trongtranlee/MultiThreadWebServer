@@ -1,136 +1,118 @@
-// Java implementation of Server side
-// It contains two classes : Server and ClientHandler
-// Save file as Server.java
-
 import java.io.*;
-import java.util.*;
 import java.net.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
 
 // Server class
-public class Server
-{
+public class Server {
+    final static int ServerPort = 1234;
+    static List<ClientHandler> clients = new ArrayList<>();
 
-    // Vector to store active clients
-    static Vector<ClientHandler> ar = new Vector<>();
+    public static void main(String[] args) throws IOException {
+        // Server is listening on port 1234
+        ServerSocket ss = new ServerSocket(ServerPort);
 
-    // counter for clients
-    static int i = 0;
+        System.out.println("Server started...");
 
-    public static void main(String[] args) throws IOException
-    {
-        // server is listening on port 1234
-        ServerSocket ss = new ServerSocket(1234);
+        // Start a separate thread to handle server-to-client messages
+        Thread serverThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                Scanner scanner = new Scanner(System.in);
+                while (true) {
+                    String serverMessage = scanner.nextLine();
+                    // Send the server message to all clients
+                    for (ClientHandler client : clients) {
+                        client.sendMessage("Server: " + serverMessage);
+                    }
+                }
+            }
+        });
+        serverThread.start();
 
-        Socket s;
+        // Running infinite loop for getting client requests
+        while (true) {
+            Socket s = null;
 
-        // running infinite loop for getting
-        // client request
-        while (true)
-        {
-            // Accept the incoming request
-            s = ss.accept();
+            try {
+                // Accept the incoming request
+                s = ss.accept();
 
-            System.out.println("New client request received : " + s);
+                System.out.println("New client connected: " + s);
 
-            // obtain input and output streams
-            DataInputStream dis = new DataInputStream(s.getInputStream());
-            DataOutputStream dos = new DataOutputStream(s.getOutputStream());
+                // Obtain input and output streams
+                DataInputStream dis = new DataInputStream(s.getInputStream());
+                DataOutputStream dos = new DataOutputStream(s.getOutputStream());
 
-            System.out.println("Creating a new handler for this client...");
-
-            // Create a new handler object for handling this request.
-            ClientHandler mtch = new ClientHandler(s,"client " + i, dis, dos);
-
-            // Create a new Thread with this object.
-            Thread t = new Thread(mtch);
-
-            System.out.println("Adding this client to active client list");
-
-            // add this client to active clients list
-            ar.add(mtch);
-
-            // start the thread.
-            t.start();
-
-            // increment i for new client.
-            // i is used for naming only, and can be replaced
-            // by any naming scheme
-            i++;
-
+                // Create a new thread to handle the client
+                ClientHandler clientThread = new ClientHandler(s, dis, dos);
+                clients.add(clientThread);
+                clientThread.start();
+            } catch (Exception e) {
+                s.close();
+                e.printStackTrace();
+            }
         }
     }
-}
 
-// ClientHandler class
-class ClientHandler implements Runnable
-{
-    Scanner scn = new Scanner(System.in);
-    private String name;
-    final DataInputStream dis;
-    final DataOutputStream dos;
-    Socket s;
-    boolean isloggedin;
+    // ClientHandler class
+    private static class ClientHandler extends Thread {
+        final Socket socket;
+        final DataInputStream dis;
+        final DataOutputStream dos;
 
-    // constructor
-    public ClientHandler(Socket s, String name,
-                         DataInputStream dis, DataOutputStream dos) {
-        this.dis = dis;
-        this.dos = dos;
-        this.name = name;
-        this.s = s;
-        this.isloggedin=true;
-    }
+        public ClientHandler(Socket socket, DataInputStream dis, DataOutputStream dos) {
+            this.socket = socket;
+            this.dis = dis;
+            this.dos = dos;
+        }
 
-    @Override
-    public void run() {
+        @Override
+        public void run() {
+            String nickname;
+            try {
+                // Read the nickname from the client
+                nickname = dis.readUTF();
+                System.out.println(nickname + " has joined the Chat Room !");
 
-        String received;
-        while (true)
-        {
-            try
-            {
-                // receive the string
-                received = dis.readUTF();
+                while (true) {
+                    // Read the message sent by the client
+                    String message = dis.readUTF();
 
-                System.out.println(received);
+                    // Print the received message on the server
+                    System.out.println(nickname + ": " + message);
 
-                if(received.equals("logout")){
-                    this.isloggedin=false;
-                    this.s.close();
-                    break;
-                }
-
-                // break the string into message and recipient part
-                StringTokenizer st = new StringTokenizer(received, "#");
-                String MsgToSend = st.nextToken();
-                String recipient = st.nextToken();
-
-                // search for the recipient in the connected devices list.
-                // ar is the vector storing client of active users
-                for (ClientHandler mc : Server.ar)
-                {
-                    // if the recipient is found, write on its
-                    // output stream
-                    if (mc.name.equals(recipient) && mc.isloggedin==true)
-                    {
-                        mc.dos.writeUTF(this.name+" : "+MsgToSend);
-                        break;
+                    // Send the message to all clients except the sender
+                    for (ClientHandler client : clients) {
+                        if (client != this) {
+                            client.sendMessage(nickname + ": " + message);
+                        }
                     }
                 }
             } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    // Close the connection
+                    socket.close();
+                    dis.close();
+                    dos.close();
+                    clients.remove(this);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
 
+        // Send a message to the client
+        public void sendMessage(String message) {
+            try {
+                dos.writeUTF(message);
+                dos.flush(); // Flush the output stream to ensure the message is sent immediately
+            } catch (IOException e) {
                 e.printStackTrace();
             }
-
-        }
-        try
-        {
-            // closing resources
-            this.dis.close();
-            this.dos.close();
-
-        }catch(IOException e){
-            e.printStackTrace();
         }
     }
 }
